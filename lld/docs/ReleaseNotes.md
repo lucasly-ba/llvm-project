@@ -1,7 +1,9 @@
-% If you want to modify sections/contents permanently, you should modify both
-% ReleaseNotes.rst and ReleaseNotesTemplate.txt.
+<!-- If you want to modify sections/contents permanently, you should modify both
+ReleaseNotes.md and ReleaseNotesTemplate.txt. -->
 
-# lld {{ release }} Release Notes
+(lld-release-release-notes)=
+
+# lld {{ release | default("") }} Release Notes
 
 ```{contents}
 :local: true
@@ -10,7 +12,7 @@
 ::::{only} PreRelease
 
 :::{warning}
-These are in-progress notes for the upcoming LLVM {{ release }} release.
+These are in-progress notes for the upcoming LLVM {{ release | default("") }} release.
 Release notes for previous releases can be found on
 [the Download Page](https://releases.llvm.org/download.html).
 :::
@@ -18,7 +20,7 @@ Release notes for previous releases can be found on
 
 ## Introduction
 
-This document contains the release notes for the lld linker, release {{ release }}.
+This document contains the release notes for the lld linker, release {{ release | default("") }}.
 Here we describe the status of lld, including major improvements
 from the previous release. All lld releases may be downloaded
 from the [LLVM releases web site](https://llvm.org/releases/).
@@ -109,7 +111,7 @@ from the [LLVM releases web site](https://llvm.org/releases/).
   `protected` or `-Bsymbolic`) in DSOs, which previously produced an
   inconsistent GOT entry and spurious preemption.
   ([#207881](https://github.com/llvm/llvm-project/pull/207881))
-- For AArch64, ``` adrp``+``ldr ``` GOT relaxation is now decided per-symbol,
+- For AArch64, `adrp`+`ldr` GOT relaxation is now decided per-symbol,
   all-or-nothing, avoiding invalid relaxation when a branch target sits
   between the `adrp` and `ldr` of a pair.
   ([#208396](https://github.com/llvm/llvm-project/pull/208396))
@@ -155,4 +157,3 @@ from the [LLVM releases web site](https://llvm.org/releases/).
 ### WebAssembly Improvements
 
 #### Fixes
-
