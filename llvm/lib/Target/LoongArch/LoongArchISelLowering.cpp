@@ -6424,7 +6424,8 @@ static SDValue performANDCombine(SDNode *N, SelectionDAG &DAG,
 
 // Return the original source vector if N consists of the half
 // of each 128-bit lane.
-static SDValue matchHalfOf128BitLanes(SDValue N, bool isLow) {
+static SDValue matchHalfOf128BitLanes(SDValue N, bool isLow,
+                                      const LoongArchSubtarget &Subtarget) {
   N = peekThroughBitcasts(N);
 
   EVT DstVT = N.getValueType();
@@ -6434,6 +6435,9 @@ static SDValue matchHalfOf128BitLanes(SDValue N, bool isLow) {
   unsigned NumElts = DstVT.getVectorNumElements();
 
   // LSX canonical form:
+  if (!Subtarget.hasExtLSX())
+    return SDValue();
+
   if (N.getOpcode() == ISD::EXTRACT_SUBVECTOR) {
     SDValue Src = N.getOperand(0);
     EVT SrcVT = Src.getValueType();
@@ -6451,6 +6455,9 @@ static SDValue matchHalfOf128BitLanes(SDValue N, bool isLow) {
   }
 
   // LASX canonical form:
+  if (!Subtarget.hasExtLASX())
+    return SDValue();
+
   auto *BV = dyn_cast<BuildVectorSDNode>(N);
   if (!BV)
     return SDValue();
@@ -6504,9 +6511,6 @@ static SDValue matchHalfOf128BitLanes(SDValue N, bool isLow) {
 static SDValue performSHLCombine(SDNode *N, SelectionDAG &DAG,
                                  TargetLowering::DAGCombinerInfo &DCI,
                                  const LoongArchSubtarget &Subtarget) {
-  if (!Subtarget.hasExtLSX())
-    return SDValue();
-
   assert(N->getOpcode() == ISD::SHL && "Unexpected opcode");
 
   EVT VT = N->getValueType(0);
@@ -6527,7 +6531,8 @@ static SDValue performSHLCombine(SDNode *N, SelectionDAG &DAG,
   if (!LHS.hasOneUse())
     return SDValue();
 
-  SDValue Vec = matchHalfOf128BitLanes(LHS.getOperand(0), /*isLow=*/true);
+  SDValue Vec =
+      matchHalfOf128BitLanes(LHS.getOperand(0), /*isLow=*/true, Subtarget);
   if (!Vec)
     return SDValue();
 
@@ -8512,7 +8517,18 @@ static SDValue performEXTENDCombine(SDNode *N, SelectionDAG &DAG,
     if (SDValue R = PromoteMaskArithmetic(SDValue(N, 0), DL, DAG, Subtarget))
       return R;
 
-    if (SDValue R = matchHalfOf128BitLanes(N->getOperand(0), /*isLow=*/false)) {
+    if (SDValue R = matchHalfOf128BitLanes(N->getOperand(0), /*isLow=*/false,
+                                           Subtarget)) {
+      EVT SrcVT = R.getValueType();
+      EVT SrcEltVT = SrcVT.getVectorElementType();
+      EVT DstEltVT = VT.getVectorElementType();
+
+      if (SrcVT.getSizeInBits() != VT.getSizeInBits())
+        return SDValue();
+      if (DstEltVT.getSizeInBits() != SrcEltVT.getSizeInBits() * 2)
+        return SDValue();
+      if (!SrcEltVT.isInteger() || SrcEltVT.getSizeInBits() > 32)
+        return SDValue();
       if (N->getOpcode() == ISD::SIGN_EXTEND)
         return DAG.getNode(LoongArchISD::VEXTH, DL, VT, R);
       if (N->getOpcode() == ISD::ZERO_EXTEND)
